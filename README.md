@@ -2,6 +2,8 @@
 
 A Python script that analyzes GitLab repositories to validate commit quality and repository standards. This tool helps ensure that your repository follows best practices for commit messages, commit volume, and repository structure.
 
+Created by Ray Mandelevi
+
 ## Features
 
 - Validates commit message standards (Conventional Commits)
