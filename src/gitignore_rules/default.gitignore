@@ -1,0 +1,125 @@
+#################################################
+# Node.js
+#################################################
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+#################################################
+# Java & Maven
+#################################################
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.ctxt
+*.iml
+
+# Build output
+target/
+out/
+bin/
+dependency-reduced-pom.xml
+release.properties
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+buildNumber.properties
+
+#################################################
+# Gradle
+#################################################
+.gradle/
+build/
+!gradle-wrapper.jar
+gradle-app.setting
+
+#################################################
+# IntelliJ IDEA
+#################################################
+.idea/
+*.iws
+*.iml
+*.ipr
+
+#################################################
+# Visual Studio Code
+#################################################
+.vscode/
+.history/
+
+#################################################
+# OS / Filesystem
+#################################################
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+
+#################################################
+# Environment / Secrets
+#################################################
+.env
+.env.*
+!.env.example
+
+#################################################
+# Logs & Temp Files
+#################################################
+*.log
+*.tmp
+*.swp
+*.bak
+*~
+
+logs/
+.cache/
+.tmp/
+tmp/
+
+#################################################
+# Python (optional)
+#################################################
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.eggs/
+.venv/
+env/
+venv/
+
+#################################################
+# Test/Coverage
+#################################################
+.coverage
+coverage/
+coverage-final.json
+.nyc_output/
+jest-coverage/
+
+#################################################
+# IDE-specific (general)
+#################################################
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+#################################################
+# Misc
+#################################################
+*.orig
+*.rej
+*.log.*
+*.db
+*.sqlite
