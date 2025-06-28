@@ -1,11 +1,11 @@
 import json
 import os
 
+import dotenv
 import gitlab.exceptions
 import gitlab.v4
 import gitlab.v4.objects
 import openai
-from dotenv import load_dotenv
 import myLogger
 import re
 import pathspec
@@ -16,7 +16,7 @@ CONVENTIONAL_COMMIT_TYPES = {
 }
 
 
-load_dotenv()
+dotenv.load_dotenv()
 client = openai.OpenAI(base_url="https://api.groq.com/openai/v1", api_key=os.getenv("GROQ_API_KEY"))
 
 
@@ -25,7 +25,7 @@ def validate_commits_range(commits, min_commits=1, max_commits=40):
     filtered_commits = list(filter(
         lambda commit: (not commit.title.lower().startswith(('fix', 'hotfix', 'docs', 'merge', 'initial commit'))),
         commits))
-    
+
     result = len(filtered_commits) in range(min_commits, max_commits + 1)
     myLogger.logger.info(f"Commit volume: {len(filtered_commits)}/{len(commits)} commits valid")
 
@@ -39,16 +39,17 @@ def is_conventional_commit(message: str) -> bool:
     """
     # Normalize message by stripping and collapsing spaces
     normalized = re.sub(r'\s+', ' ', message.strip())
-    
+
     # Regex with optional spacing around type/scope/colon
     pattern = r'^\s*(\w+)\s*(\(\s*[^()]+\s*\))?\s*:\s*(.+)$'
     match = re.match(pattern, normalized)
 
     if not match:
         return False
-    
+
     commit_type = match.group(1).strip()
     return commit_type.lower() in CONVENTIONAL_COMMIT_TYPES
+
 
 def validate_commits_standard(commits):
     myLogger.logger.info("Analyzing commit standards")
@@ -67,7 +68,7 @@ def validate_commits_standard(commits):
     ratio = valid_count / total_commits if total_commits > 0 else 0
 
     return {
-        "validationStatus" : get_commit_status(ratio),
+        "validationStatus": get_commit_status(ratio),
         "valid_commits": valid_count,
         "total_commmits": total_commits,
         "ratio": ratio
@@ -81,7 +82,7 @@ def get_commit_status(ratio):
         return 'good'
     elif ratio >= 0.50:
         return 'passed'
-    
+
     return 'failed'
 
 
@@ -166,7 +167,7 @@ def validate_gitignore(project, ref_branch):
 
     items = project.repository_tree(path="", ref=ref_branch, recursive=True, all=True)
     filenames = list(map(lambda item: (item['name']), items))
-        
+
     with open('./gitignore_rules/default.gitignore', 'r') as f:
         spec = pathspec.GitIgnoreSpec.from_lines(f)
 
@@ -175,7 +176,7 @@ def validate_gitignore(project, ref_branch):
     if len(ignored_files) > 0:
         myLogger.logger.info(f'FOUND NON IGNORED FILES: {ignored_files}')
         return False
-    
+
     return ".gitignore" in filenames
 
 
@@ -185,7 +186,8 @@ def validate_succinct_commits(commits):
 
     myLogger.logger.info("Analyzing succinct commits")
     # Filter commits based on commit description after the colon
-    unsuccinct_commits = list(filter(lambda commit: (":" in commit.title and len(commit.title.partition(":")[2]) > MAX_CHARS), commits))
+    unsuccinct_commits = list(
+        filter(lambda commit: (":" in commit.title and len(commit.title.partition(":")[2]) > MAX_CHARS), commits))
 
     return len(unsuccinct_commits) < VALID_UNSUCCINCT_PERCENTAGE * len(commits)
 
@@ -195,5 +197,5 @@ def validate_main_latest_version(project: gitlab.v4.objects.Project):
 
     if len(latets_mrs) == 0:
         return False
-    
+
     return latets_mrs[0].state == 'merged'
