@@ -34,15 +34,12 @@ pip install -r requirements.txt
 
 ## Environment Setup
 
-Create a `.env` file in the project root with the following variables:
+You don't need to create any environment variables.</br>
+In fact the script does it for you to save your credentials such as:
+   - gitlab token
+   - groq api key
 
-```env
-GITLAB_TOKEN=your_gitlab_personal_access_token
-GROQ_API_KEY=your_groq_api_key
-```
-
-- `GITLAB_TOKEN`: Your GitLab personal access token with API access
-- `GROQ_API_KEY`: Your Groq API key for AI-powered commit analysis
+To grant you efficient setup each boot!
 
 ## Usage
 
