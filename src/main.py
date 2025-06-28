@@ -1,17 +1,16 @@
-import logging
-import os
+import sys
 from urllib.parse import urlparse
 from datetime import datetime
 
+import dotenv
 import urllib3
-from dotenv import load_dotenv
 import gitlab
 
-import myLogger
 from validations import *
 
-load_dotenv(override=True)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), '/.env'), override=True)
 
 
 def connect_to_gitlab(gitlab_url, git_token):
@@ -27,7 +26,7 @@ def is_valid_gitlab_url(url):
         return all([parsed.scheme, parsed.netloc, parsed.path])
     except:
         return False
-    
+
 
 def get_fallback_branch(project):
     """
@@ -58,7 +57,8 @@ def get_fallback_branch(project):
 
     return sorted_branches[0].name
 
-def validate_repository(gitlab_url, gitlab_token):
+
+def validate_repository(gitlab_url, gitlab_token, min_commits, max_commits):
     """
     Validate a GitLab repository and return validation results.
     
@@ -75,7 +75,7 @@ def validate_repository(gitlab_url, gitlab_token):
     parsed_url = urlparse(gitlab_url)
     gl = connect_to_gitlab(parsed_url.scheme + "://" + parsed_url.netloc, gitlab_token)
     project = gl.projects.get(parsed_url.path[1:])
-    latest_version=validate_main_latest_version(project)
+    latest_version = validate_main_latest_version(project)
 
     if not latest_version:
         myLogger.logger.warning("OUTDATED MAIN BRANCH - FALLBACK TO CHILD BRANCH")
@@ -86,9 +86,6 @@ def validate_repository(gitlab_url, gitlab_token):
     commits = project.commits.list(ref_name=ref_branch, all=True)
 
     myLogger.logger.info("Starting validation process")
-    min_commits = int(input("Enter the minimum number of commits: "))
-    max_commits = int(input("Enter the maximum number of commits: "))
-
     enough_commits = validate_commits_range(commits, min_commits, max_commits)
     significant_commits = validate_significant_commits(commits)
     commits_standard_status = validate_commits_standard(commits)
@@ -105,43 +102,26 @@ def validate_repository(gitlab_url, gitlab_token):
     }
 
 
-def main():
-    """Main function to run the validation process interactively."""
-    gitlab_token = os.getenv("GITLAB_TOKEN")
-    if not gitlab_token:
-        myLogger.logger.error("GITLAB_TOKEN not found in environment variables")
-        raise ValueError("GITLAB_TOKEN environment variable is required")
-
-    while True:
-        try:
-            url_input = input('Enter Full Gitlab Project URL: ')
-            if not is_valid_gitlab_url(url_input):
-                print(
-                    "Invalid URL format. Please enter a valid GitLab project URL (e.g., https://gitlab.com/group/project)")
-                continue
-
-            results = validate_repository(url_input, gitlab_token)
-            
-            print('------------------------------------------')
-            print('Satisfying Commit Volume: ' + ('passed' if results['commit_volume'] else 'failed'))
-            print('Significant Commits: ' + results['significant_commits'])
-            print('Commits Meet Standard: ' + results['commit_standards'])
-            print('Contains Valid .gitignore: ' + ('passed' if results['has_gitignore'] else 'failed'))
-            print('Succint Commits: ' + ('passed' if results['succint_commits'] else 'failed'))
-            print('Latest Version On Main: ' + ('passed' if results['latest_version'] else 'failed'))
-            print('------------------------------------------')
-            break
-            
-        except gitlab.exceptions.GitlabAuthenticationError:
-            print("Authentication failed. Please check your GitLab token.")
-            continue
-        except gitlab.exceptions.GitlabGetError:
-            print("Project not found. Please check the project URL.")
-            continue
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            continue
-
-
 if __name__ == "__main__":
-    main()
+
+    if len(sys.argv) < 1:
+        myLogger.logger.error(
+            "Failed to pass arguments. Check the inputs. If the bug persists, communicate with the creater - Ray Mandelevi 9369350")
+    else:
+        gitlab_token = os.getenv('GITLAB_TOKEN')
+        project_url = sys.argv[1]
+        min_commits = int(sys.argv[2])
+        max_commits = int(sys.argv[3])
+
+        print(project_url)
+
+        results = validate_repository(project_url, gitlab_token, min_commits, max_commits)
+
+        print('------------------------------------------')
+        print('Satisfying Commit Volume: ' + ('passed' if results['commit_volume'] else 'failed'))
+        print('Significant Commits: ' + results['significant_commits'])
+        print('Commits Meet Standard: ' + results['commit_standards'])
+        print('Contains Valid .gitignore: ' + ('passed' if results['has_gitignore'] else 'failed'))
+        print('Succint Commits: ' + ('passed' if results['succint_commits'] else 'failed'))
+        print('Latest Version On Main: ' + ('passed' if results['latest_version'] else 'failed'))
+        print('------------------------------------------')
