@@ -8,10 +8,11 @@ from .runner import ScriptRunner
 
 dotenv.load_dotenv()
 
+
 class ReviewCommitsGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('בודקומיטר - Git Outta here')
+        self.setWindowTitle('בודקומיטר')
         self.setMinimumWidth(600)
         self.init_ui()
         self.runner = None
