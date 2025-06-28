@@ -19,8 +19,6 @@ class ScriptRunner(QThread):
     def run(self):
         env_path = os.path.join(os.path.dirname(__file__), '../../.env')
 
-        print(env_path)
-
         dotenv.set_key(env_path, key_to_set='GITLAB_TOKEN', value_to_set=self.gitlab_token)
         dotenv.set_key(env_path, key_to_set='GROQ_API_KEY', value_to_set=self.groq_token)
 
