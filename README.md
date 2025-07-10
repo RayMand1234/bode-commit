@@ -48,7 +48,7 @@ To grant you efficient setup each boot!
 1. Run the script:
 
 ```bash
-python src/main.py
+python src/gui_app.py
 ```
 
 2. When prompted:
