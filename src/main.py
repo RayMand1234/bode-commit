@@ -113,8 +113,6 @@ if __name__ == "__main__":
         min_commits = int(sys.argv[2])
         max_commits = int(sys.argv[3])
 
-        print(project_url)
-
         results = validate_repository(project_url, gitlab_token, min_commits, max_commits)
 
         print('------------------------------------------')

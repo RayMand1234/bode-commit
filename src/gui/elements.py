@@ -25,6 +25,10 @@ class InputElement(QLineEdit):
 class SubmitButton(QPushButton):
     def __init__(self, text):
         super().__init__(text)
+        self.setMaximumWidth(200)
+        self.setStyleSheet('''
+        background-color: 'green'
+        ''')
 
 
 class LogPanel(QTextEdit):

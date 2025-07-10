@@ -60,17 +60,19 @@ def validate_commits_standard(commits):
                         commit.title.lower().startswith(('merge branch', 'initial commit'))), commits))
     valid_count = len(valid_commits)
 
-    print("Non standard commits")
+    print("Non standard commits:")
+
     for commit in commits:
         if commit not in valid_commits:
             print(commit.title)
+
     total_commits = len(commits)
     ratio = valid_count / total_commits if total_commits > 0 else 0
 
     return {
         "validationStatus": get_commit_status(ratio),
         "valid_commits": valid_count,
-        "total_commmits": total_commits,
+        "total_commits": total_commits,
         "ratio": ratio
     }
 
