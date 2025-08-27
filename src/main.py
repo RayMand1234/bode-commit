@@ -28,36 +28,6 @@ def is_valid_gitlab_url(url):
         return False
 
 
-def get_fallback_branch(project):
-    """
-    Returns the most recently updated non-default branch to use as a fallback.
-    If no fallback branch is found, returns None.
-    
-    Args:
-        project: A GitLab project object (already fetched via python-gitlab)
-    
-    Returns:
-        The name of the fallback branch (str) or None
-    """
-    default_branch = project.default_branch
-
-    # Get all branches except the default
-    branches = project.branches.list(all=True)
-    candidate_branches = [b for b in branches if b.name != default_branch]
-
-    if not candidate_branches:
-        return None
-
-    # Sort by commit date descending
-    def parse_commit_date(branch):
-        commit_info = branch.commit
-        return datetime.strptime(commit_info['committed_date'], "%Y-%m-%dT%H:%M:%S.%f%z")
-
-    sorted_branches = sorted(candidate_branches, key=parse_commit_date, reverse=True)
-
-    return sorted_branches[0].name
-
-
 def validate_repository(gitlab_url, gitlab_token, min_commits, max_commits):
     """
     Validate a GitLab repository and return validation results.
@@ -75,13 +45,9 @@ def validate_repository(gitlab_url, gitlab_token, min_commits, max_commits):
     parsed_url = urlparse(gitlab_url)
     gl = connect_to_gitlab(parsed_url.scheme + "://" + parsed_url.netloc, gitlab_token)
     project = gl.projects.get(parsed_url.path[1:])
-    latest_version = validate_main_latest_version(project)
+    latest_version = get_fallback_branch(project)
 
-    if not latest_version:
-        myLogger.logger.warning("OUTDATED MAIN BRANCH - FALLBACK TO CHILD BRANCH")
-        ref_branch = get_fallback_branch(project)
-    else:
-        ref_branch = 'main'
+    ref_branch = latest_version['branchName']
 
     commits = project.commits.list(ref_name=ref_branch, all=True)
 
@@ -98,7 +64,7 @@ def validate_repository(gitlab_url, gitlab_token, min_commits, max_commits):
         'commit_standards': commits_standard_status['validationStatus'],
         'has_gitignore': gitignore_status,
         'succint_commits': succint_commits,
-        'latest_version': latest_version
+        'latest_version': {'result': latest_version['latestOnMain'], 'message': latest_version['message']}
     }
 
 
@@ -106,7 +72,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) < 1:
         myLogger.logger.error(
-            "Failed to pass arguments. Check the inputs. If the bug persists, communicate with the creater - Ray Mandelevi 9369350")
+            "Failed to pass arguments. Check the inputs. If the bug persists, communicate with the creator - Ray Mandelevi 9369350")
     else:
         gitlab_token = os.getenv('GITLAB_TOKEN')
         project_url = sys.argv[1]
@@ -121,5 +87,5 @@ if __name__ == "__main__":
         print('Commits Meet Standard: ' + results['commit_standards'])
         print('Contains Valid .gitignore: ' + ('passed' if results['has_gitignore'] else 'failed'))
         print('Succint Commits: ' + ('passed' if results['succint_commits'] else 'failed'))
-        print('Latest Version On Main: ' + ('passed' if results['latest_version'] else 'failed'))
+        print('Latest Version On Main: ' + ('passed' if results['latest_version']['result'] else 'failed') + ' -> ' + results['latest_version']['message'])
         print('------------------------------------------')

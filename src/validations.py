@@ -194,10 +194,38 @@ def validate_succinct_commits(commits):
     return len(unsuccinct_commits) < VALID_UNSUCCINCT_PERCENTAGE * len(commits)
 
 
-def validate_main_latest_version(project: gitlab.v4.objects.Project):
-    latets_mrs = project.mergerequests.list(order_by='updated_at', sort='desc', per_page=1)
+def get_fallback_branch(project: gitlab.v4.objects.Project):
+    if validate_mr_to_branch(project, "main"):
+        return {
+            'branchName': 'main',
+            'message': 'Latest Version is on main',
+            'latestOnMain': True,
+        }
 
-    if len(latets_mrs) == 0:
+    try:
+        project.branches.get('dev')
+    except (gitlab.exceptions.GitlabHttpError, gitlab.exceptions.GitlabGetError):
+        myLogger.logger.warning("DEV BRANCH DOES NOT EXIST")
+
+        return {
+            'branchName': 'main',
+            'message': 'a dev branch doesn\'t exists',
+            'latestOnMain': True
+        }
+
+    myLogger.logger.warning("OUTDATED MAIN BRANCH - FALLBACK TO CHILD BRANCH - dev")
+
+    return {
+        'branchName': 'dev',
+        'message': 'Latest Version On Dev',
+        'latestOnMain': False
+    }
+
+
+def validate_mr_to_branch(project: gitlab.v4.objects.Project, branch_name):
+    latest_mr = project.mergerequests.list(order_by='updated_at', sort='desc', per_page=1, target_branch=branch_name)
+
+    if len(latest_mr) == 0:
         return False
 
-    return latets_mrs[0].state == 'merged'
+    return latest_mr[0].state == 'merged'
