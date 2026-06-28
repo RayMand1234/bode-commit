@@ -60,17 +60,19 @@ def validate_commits_standard(commits):
                         commit.title.lower().startswith(('merge branch', 'initial commit'))), commits))
     valid_count = len(valid_commits)
 
-    print("Non standard commits")
+    print("Non standard commits:")
+
     for commit in commits:
         if commit not in valid_commits:
             print(commit.title)
+
     total_commits = len(commits)
     ratio = valid_count / total_commits if total_commits > 0 else 0
 
     return {
         "validationStatus": get_commit_status(ratio),
         "valid_commits": valid_count,
-        "total_commmits": total_commits,
+        "total_commits": total_commits,
         "ratio": ratio
     }
 
@@ -168,7 +170,7 @@ def validate_gitignore(project, ref_branch):
     items = project.repository_tree(path="", ref=ref_branch, recursive=True, all=True)
     filenames = list(map(lambda item: (item['name']), items))
 
-    with open('./gitignore_rules/default.gitignore', 'r') as f:
+    with open(os.path.join(os.path.dirname(__file__), 'gitignore_rules', 'default.gitignore'), 'r') as f:
         spec = pathspec.GitIgnoreSpec.from_lines(f)
 
     ignored_files = list(spec.match_files(filenames))
@@ -192,10 +194,37 @@ def validate_succinct_commits(commits):
     return len(unsuccinct_commits) < VALID_UNSUCCINCT_PERCENTAGE * len(commits)
 
 
-def validate_main_latest_version(project: gitlab.v4.objects.Project):
-    latets_mrs = project.mergerequests.list(order_by='updated_at', sort='desc', per_page=1)
+def get_fallback_branch(project: gitlab.v4.objects.Project):
+    # No child branch — everything lives on main, so it is the latest version.
+    try:
+        project.branches.get('dev')
+    except (gitlab.exceptions.GitlabHttpError, gitlab.exceptions.GitlabGetError):
+        myLogger.logger.info("No dev branch found — using main")
+        return {
+            'branchName': 'main',
+            'message': "Passed, no child branch; validations ran on 'main'",
+            'latestOnMain': True,
+        }
 
-    if len(latets_mrs) == 0:
-        return False
+    # Child branch exists — the latest version is on main only if dev's work is merged into it.
+    if is_branch_merged(project, source='dev', target='main'):
+        myLogger.logger.info("dev branch is merged into main")
+        return {
+            'branchName': 'main',
+            'message': "Passed, merged to main; validations ran on 'main'",
+            'latestOnMain': True,
+        }
 
-    return latets_mrs[0].state == 'merged'
+    myLogger.logger.warning("dev is ahead of main — latest version not merged; falling back to dev branch")
+    return {
+        'branchName': 'dev',
+        'message': "Merge validation failed; validations ran on 'dev' branch",
+        'latestOnMain': False
+    }
+
+
+def is_branch_merged(project: gitlab.v4.objects.Project, source, target):
+    """Return True if `source` has no commits that aren't already present in `target`."""
+    comparison = project.repository_compare(target, source)
+
+    return len(comparison.get('commits', [])) == 0

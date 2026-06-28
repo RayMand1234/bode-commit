@@ -19,27 +19,21 @@ class ScriptRunner(QThread):
     def run(self):
         env_path = os.path.join(os.path.dirname(__file__), '../../.env')
 
-        print(env_path)
-
         dotenv.set_key(env_path, key_to_set='GITLAB_TOKEN', value_to_set=self.gitlab_token)
         dotenv.set_key(env_path, key_to_set='GROQ_API_KEY', value_to_set=self.groq_token)
 
         process = subprocess.Popen(
             [sys.executable, os.path.join(os.path.dirname(__file__), '../main.py'), self.project_url, self.min_commits, self.max_commits],
-            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True
         )
         try:
-            process.stdin.write(self.project_url + '\n')
-            process.stdin.flush()
             for line in process.stdout:
                 self.log_signal.emit(line)
         except Exception as e:
             self.log_signal.emit(f'Error: {e}\n')
         finally:
-            process.stdin.close()
             process.stdout.close()
             process.wait()
             self.finished_signal.emit() 
