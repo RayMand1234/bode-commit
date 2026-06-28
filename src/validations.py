@@ -170,7 +170,7 @@ def validate_gitignore(project, ref_branch):
     items = project.repository_tree(path="", ref=ref_branch, recursive=True, all=True)
     filenames = list(map(lambda item: (item['name']), items))
 
-    with open('./gitignore_rules/default.gitignore', 'r') as f:
+    with open(os.path.join(os.path.dirname(__file__), 'gitignore_rules', 'default.gitignore'), 'r') as f:
         spec = pathspec.GitIgnoreSpec.from_lines(f)
 
     ignored_files = list(spec.match_files(filenames))
@@ -195,37 +195,36 @@ def validate_succinct_commits(commits):
 
 
 def get_fallback_branch(project: gitlab.v4.objects.Project):
-    if validate_mr_to_branch(project, "main"):
-        return {
-            'branchName': 'main',
-            'message': 'Latest Version is on main',
-            'latestOnMain': True,
-        }
-
+    # No child branch — everything lives on main, so it is the latest version.
     try:
         project.branches.get('dev')
     except (gitlab.exceptions.GitlabHttpError, gitlab.exceptions.GitlabGetError):
-        myLogger.logger.warning("DEV BRANCH DOES NOT EXIST")
-
+        myLogger.logger.info("No dev branch found — using main")
         return {
             'branchName': 'main',
-            'message': 'a dev branch doesn\'t exists',
-            'latestOnMain': True
+            'message': "Passed, no child branch; validations ran on 'main'",
+            'latestOnMain': True,
         }
 
-    myLogger.logger.warning("OUTDATED MAIN BRANCH - FALLBACK TO CHILD BRANCH - dev")
+    # Child branch exists — the latest version is on main only if dev's work is merged into it.
+    if is_branch_merged(project, source='dev', target='main'):
+        myLogger.logger.info("dev branch is merged into main")
+        return {
+            'branchName': 'main',
+            'message': "Passed, merged to main; validations ran on 'main'",
+            'latestOnMain': True,
+        }
 
+    myLogger.logger.warning("dev is ahead of main — latest version not merged; falling back to dev branch")
     return {
         'branchName': 'dev',
-        'message': 'Latest Version On Dev',
+        'message': "Merge validation failed; validations ran on 'dev' branch",
         'latestOnMain': False
     }
 
 
-def validate_mr_to_branch(project: gitlab.v4.objects.Project, branch_name):
-    latest_mr = project.mergerequests.list(order_by='updated_at', sort='desc', per_page=1, target_branch=branch_name)
+def is_branch_merged(project: gitlab.v4.objects.Project, source, target):
+    """Return True if `source` has no commits that aren't already present in `target`."""
+    comparison = project.repository_compare(target, source)
 
-    if len(latest_mr) == 0:
-        return False
-
-    return latest_mr[0].state == 'merged'
+    return len(comparison.get('commits', [])) == 0
